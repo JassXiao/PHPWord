@@ -1050,7 +1050,41 @@ class TemplateProcessor
     {
         // Note: we can't use the same function for both cases here, because of performance considerations.
         if (self::MAXIMUM_REPLACEMENTS_DEFAULT === $limit) {
-            return str_replace($search, $replace, $documentPartXML);
+             //2023-07-03 Fixed by jass xiao@Shenzhen jankee tech ltd,co.:将数组替换内容转换成word段落
+            $arrMatch = null;
+            if (is_array($replace))
+            {
+                if (is_string($documentPartXML))
+                {
+                    //单个模板字符串
+                    if (preg_match('/.*(<w:p([\s]+[^>]*)?>(.+' . preg_quote($search) . '.+)?<\/w:p>)/ims',$documentPartXML,$arrMatch) <=0 ||
+                            empty($arrMatch[1]))
+                            return str_replace($search, implode('<w:br/>',$replace), $documentPartXML);
+                }
+                else
+                {
+                    //多段模板数组
+                    foreach ($documentPartXML as $dp)
+                    {
+                        if (preg_match('/.*(<w:p([\s]+[^>]*)?>(.+' . preg_quote($search) . '.+)?<\/w:p>)/ims',$dp,$arrMatch) > 0 &&
+                                !empty($arrMatch[1]))
+                                break;
+                    }
+                    if (empty($arrMatch[1]))
+                    {
+                        return str_replace($search, implode('<w:br/>',$replace), $documentPartXML);
+                    }
+                }
+                //逐个段落拼接并替换
+                $sReplace = '';
+                foreach ($replace as $r)
+                {
+                    $sReplace .= str_replace($search, $r, $arrMatch[1]);
+                }
+                return str_replace($arrMatch[1], $sReplace, $documentPartXML);
+            }
+            else
+                return str_replace($search, $replace, $documentPartXML);
         }
         $regExpEscaper = new RegExp();
 
